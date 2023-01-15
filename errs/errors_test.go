@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gotk/errs"
+	"github.com/lightsaid/gotk/errs"
 	"github.com/stretchr/testify/require"
 )
 
