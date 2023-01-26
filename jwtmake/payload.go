@@ -8,6 +8,8 @@ import (
 	"github.com/lightsaid/gotk/random"
 )
 
+const defaultExpiresAt = 15
+
 // JWTToken 负载数据
 // 包含数据： uid 唯一标识，jwt.RegisteredClaims
 type JWTPayload struct {
@@ -23,7 +25,7 @@ func NewJWTPayload(uid string, claims jwt.RegisteredClaims) *JWTPayload {
 		claims.ID = strconv.FormatInt(time.Now().UnixNano(), 10) + random.RandomString(8)
 	}
 	if claims.ExpiresAt == nil {
-		claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(15 * time.Minute))
+		claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(defaultExpiresAt * time.Minute))
 	}
 	if claims.IssuedAt == nil {
 		claims.IssuedAt = jwt.NewNumericDate(time.Now())
