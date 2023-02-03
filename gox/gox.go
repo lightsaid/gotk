@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
-// gox 是一个简单的路由实现, 参考了 http.NewServeMux
+// gox 是一个简单的路由实现, 参考 http.NewServeMux、 gorilla/mux、gin、flow...
 
 var SupportMethods = []string{
 	http.MethodGet, http.MethodHead, http.MethodPost,
@@ -16,14 +17,30 @@ var SupportMethods = []string{
 
 type Gox struct {
 	mutex  sync.RWMutex
-	routes map[string]*route
+	routes RouteTrie
+	router map[string]*router
+}
+
+type router struct {
+	handler http.Handler
+	methods []string
+	pattern string
 }
 
 func New() *Gox {
 	return &Gox{
 		mutex:  sync.RWMutex{},
-		routes: make(map[string]*route),
+		routes: NewRouteTrie(),
+		router: make(map[string]*router),
 	}
+}
+
+func Param(r *http.Request, key string) string {
+	val, ok := r.Context().Value(contextKey(key)).(string)
+	if !ok {
+		return ""
+	}
+	return val
 }
 
 func (gx *Gox) GET(pattern string, handler func(w http.ResponseWriter, r *http.Request)) {
@@ -66,14 +83,6 @@ func (gx *Gox) HandleFunc(pattern string, handler func(w http.ResponseWriter, r 
 	gx.Handle(pattern, http.HandlerFunc(handler), methods...)
 }
 
-// Handle 添加路由/路由注册
-// 规则：
-/*
-参考 gorilla/mux
-"/products/{key}"
-"/articles/{category}/"
-"/articles/{category}/{id:[0-9]+}"
-*/
 func (gx *Gox) Handle(pattern string, handler http.Handler, methods ...string) {
 	gx.mutex.Lock()
 	defer gx.mutex.Unlock()
@@ -86,40 +95,52 @@ func (gx *Gox) Handle(pattern string, handler http.Handler, methods ...string) {
 		panic("http: nil handler")
 	}
 
-	if _, exist := gx.routes[pattern]; exist {
-		panic("http: multiple registrations for " + pattern)
-	}
+	// 同一个路由可以注册为GET、POST、PUT...
+	// if _, exist := gx.router[pattern]; exist {
+	// 	panic("http: multiple registrations for " + pattern)
+	// }
 
 	// 分割每一部分
-	paths := strings.Split(pattern, "/")
-
-	if gx.routes == nil {
-		gx.routes = make(map[string]*route)
-	}
+	parts := strings.Split(pattern, "/")[1:]
+	// if ok := gx.routes.Register(parts); !ok {
+	// 	panic("http: multiple registrations for " + pattern)
+	// }
+	// 允许重复注册
+	gx.routes.Register(parts)
 
 	// 添加路由
-	fmt.Println("添加路由", paths)
-	r := route{h: handler, pattern: pattern, methods: methods, paths: paths}
-	gx.routes[pattern] = &r
+	// fmt.Println("添加路由", parts)
+	for _, method := range methods {
+		gx.router[pattern+"#"+method] = &router{handler: handler, methods: methods, pattern: pattern}
+	}
 }
 
-func (gx *Gox) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	paths := strings.Split(r.URL.Path, "/")
-	for _, route := range gx.routes {
-		fmt.Println("route.paths: ", route.paths)
-		if ctx, ok := route.match(r.Context(), paths); ok {
-			// http method 是否存
-			exists := has(route.methods, r.Method)
-			if !exists {
-				http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-				return
-			}
-			route.h.ServeHTTP(w, r.WithContext(ctx))
-			return
-		}
+func (gx *Gox) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	t := time.Now()
+	parts := strings.Split(req.URL.Path, "/")[1:]
+	ctx, ok := gx.routes.Match(req.Context(), parts)
+	if !ok {
+		http.NotFound(w, req)
+		return
 	}
-
-	http.NotFound(w, r)
+	key, exists := ctx.Value(trieNodeKey).(string)
+	if !exists {
+		http.NotFound(w, req)
+		return
+	}
+	r, exists := gx.router[key+"#"+req.Method]
+	if !exists {
+		http.NotFound(w, req)
+		return
+	}
+	if r.pattern == key && has(r.methods, req.Method) {
+		r.handler.ServeHTTP(w, req.WithContext(ctx))
+		fmt.Println(">>> time: ", time.Since(t), r.pattern, req.URL.Path)
+		return
+	} else {
+		http.NotFound(w, req)
+		return
+	}
 }
 
 func has(ss []string, s string) bool {
