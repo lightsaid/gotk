@@ -197,6 +197,7 @@ func main() {
 		"/v2/api/users/sys/aaa/profile",
 		"/v2/api/users/male/22/mario",
 		"/v2/api/users/male/aabb/mario",
+		"/v2/api/users/sys/:id|[0-9]+/profile",
 
 		// "/api/category",
 		// "/api/category",
