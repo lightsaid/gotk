@@ -2,16 +2,25 @@ package gox
 
 import (
 	"context"
+	"net/http"
 	"regexp"
 	"strings"
 )
 
-var trieNodeKey contextKey = "trieNodeKey"
-
 type contextKey string
+
+var trieNodeKey contextKey = "trieNodeKey"
 
 func ContextKey(key string) contextKey {
 	return contextKey(key)
+}
+
+func Param(r *http.Request, key string) string {
+	val, ok := r.Context().Value(contextKey(key)).(string)
+	if !ok {
+		return ""
+	}
+	return val
 }
 
 // RouteTrie 路由接口
