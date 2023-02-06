@@ -1,6 +1,8 @@
 package gox
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -166,7 +168,14 @@ func (gx *Gox) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // wrap 执行中间件
 func (gx *Gox) wrap(handler http.Handler, keys []string) http.Handler {
 	for i := len(keys) - 1; i >= 0; i-- {
-		handler = gx.middlewares[keys[i]](handler)
+		fmt.Printf("len(keys): %d, i: %d \n", len(keys), i)
+		// handler = gx.middlewares[keys[i]](handler)
+		if fn, ok := gx.middlewares[keys[i]]; ok {
+			handler = fn(handler)
+		} else {
+			log.Printf("middleware key: %s not exists\n", keys[i])
+		}
+
 	}
 	return handler
 }

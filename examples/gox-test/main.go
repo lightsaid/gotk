@@ -102,6 +102,47 @@ func main() {
 		fmt.Fprintf(w, "post request: param: %s", res)
 	})
 
+	group := mux.RouteGroup("/api/products")
+	{
+		group.GET("/:id|[0-9]+", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+
+		group.POST("/:id|[0-9]+", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+
+		group.DELETE("/:id|[0-9]+", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+
+		group.GET("/orders", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s", r.URL.Path, r.Method)
+		})
+
+		group.GET("/orders/:status|^[A-Z]$", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "status"))
+		})
+	}
+
+	group2 := mux.RouteGroup("/api/category")
+	{
+		group2.GET("", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+		group2.GET("/:id|[0-9]+", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+
+		group2.POST("/:id|[0-9]+", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "id"))
+		})
+
+		group2.GET("/orders/:status|^[A-Z]+$", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "path: %s, method: %s, id: %s", r.URL.Path, r.Method, gox.Param(r, "status"))
+		}).Before("gggg", "DDD")
+	}
+
 	http.ListenAndServe("0.0.0.0:9999", mux)
 
 }
