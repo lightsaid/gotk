@@ -6,4 +6,5 @@ import (
 	_ "github.com/lightsaid/gotk/gox"
 	_ "github.com/lightsaid/gotk/jwtmake"
 	_ "github.com/lightsaid/gotk/random"
+	_ "github.com/lightsaid/gotk/usocket"
 )
