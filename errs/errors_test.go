@@ -3,7 +3,6 @@ package errs_test
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -12,10 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var ErrCustomer = errors.New("customer error")
+
 func TestAsMessage(t *testing.T) {
-	err := errs.InvalidParams.AsMessage("customer msg")
-	require.Equal(t, "customer msg", err.Message())
-	require.Equal(t, "参数错误", errs.InvalidParams.Message())
+	err := errs.Success.AsMessage("ok11")
+	require.Equal(t, "ok11", err.Message())
 }
 
 func openNotExistsFile() error {
@@ -23,45 +23,31 @@ func openNotExistsFile() error {
 	return fmt.Errorf("openNotExistsFile(): %w", err)
 }
 
-var ErrCustomer = errors.New("customer error")
-
-func TestAsException(t *testing.T) {
+func TestUnwrap(t *testing.T) {
 	fileErr := openNotExistsFile()
 
 	var pe *os.PathError
-	log.Println("err-> As", errors.As(fileErr, &pe)) // true
 	require.ErrorAs(t, fileErr, &pe)
 
 	// 第一套娃
 	custErr := errs.ServerError.AsException(ErrCustomer)
-
-	log.Println("custErr-> Is ", errors.Is(custErr, ErrCustomer)) // true
-	log.Println(custErr)
-
 	require.ErrorIs(t, custErr, ErrCustomer)
 
 	// 第二套娃
 	newErr := custErr.AsException(fileErr)
-
-	log.Println(newErr)
-
-	log.Println("newErr-> Is ", errors.Is(newErr, pe))
 	require.ErrorIs(t, newErr, pe)
-
-	log.Println("newErr-> As ", errors.As(newErr, &pe))
 	require.ErrorAs(t, newErr, &pe)
 }
 
-// 测试自定义错误
-func TestCustomerApperror(t *testing.T) {
+func TestCustomerAppError(t *testing.T) {
 	// 如：业务错误码
-	errUserExist := errs.NewAppError(2000, "用户已存在")
-
+	errUserExist := errs.NewAppError(2000, "用户已存在", http.StatusBadRequest)
 	require.Equal(t, errUserExist.Code(), 2000)
+	require.Equal(t, http.StatusBadRequest, errUserExist.StatusCode())
+	require.Equal(t, "用户已存在", errUserExist.Message())
 
-	require.Equal(t, http.StatusInternalServerError, errUserExist.StatusCode())
-
-	errUserDel := errs.NewAppError(2001, "用户已删除", http.StatusNotFound)
-
+	errUserDel := errs.NewAppError(3000, "用户已删除", http.StatusNotFound)
+	require.Equal(t, errUserDel.Code(), 3000)
 	require.Equal(t, http.StatusNotFound, errUserDel.StatusCode())
+	require.Equal(t, "用户已删除", errUserDel.Message())
 }

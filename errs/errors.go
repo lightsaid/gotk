@@ -7,15 +7,15 @@ import (
 
 // AppError 一个错误结构体，统一返回错误结构，包含用户错误提示、错误编码和错误信息
 type AppError struct {
-	code      int
 	message   string
 	exception error
+	code      int
 }
 
 // 收集错误状态码和错误信息
 var codeMaps = map[int]string{}
 
-// 收集 statusCode
+// 收集 http statusCode
 var statusCodeMaps = make(map[int]int)
 
 // NewAppError 往 codeMaps 添加错误，如果 code 已存在会触发panic;
@@ -57,12 +57,13 @@ func (a *AppError) Code() int {
 	return a.code
 }
 
-// 返回用户可读错误信息
+// Message 返回用户可读错误信息
 func (a *AppError) Message() string {
 	return a.message
 }
 
 // AsMessage 修改消息，例如：错误时入参错误（InvalidParams），可以修改成具体的错误消息（exp:手机号码不正确）
+// 返回一个新的 AppError 指针
 func (a *AppError) AsMessage(msg string) *AppError {
 	return &AppError{
 		code:      a.code,
@@ -71,46 +72,64 @@ func (a *AppError) AsMessage(msg string) *AppError {
 	}
 }
 
-// AsException 添加/追加错误
-func (a *AppError) AsException(err error) *AppError {
+// AsException 添加/追加错误, 返回一个新的 AppError 指针
+func (a *AppError) AsException(err error, msgs ...string) *AppError {
 	var e error
 	if a.exception == nil {
 		e = fmt.Errorf("%w", err)
 	} else {
 		e = fmt.Errorf("%v | %w", a.exception, err)
 	}
-	return &AppError{
+	newErr := &AppError{
 		code:      a.code,
 		message:   a.message,
 		exception: e,
 	}
+	if len(msgs) > 0 {
+		newErr.message = msgs[0]
+	}
+	return newErr
 }
 
-// 根据AppError的Code返回 http status code
+// StatusCode 根据AppError的Code返回 http status code
 func (e *AppError) StatusCode() int {
 	switch e.Code() {
 	case Success.Code():
 		return http.StatusOK
-	case ServerError.Code():
-		return http.StatusInternalServerError
-	case InvalidParams.Code():
+	case Created.Code():
+		return http.StatusCreated
+	case Accepted.Code():
+		return http.StatusAccepted
+	case NoContent.Code():
+		return http.StatusNoContent
+	case BadRequest.Code():
 		return http.StatusBadRequest
+	case Unauthorized.Code():
+		return http.StatusUnauthorized
+	case Forbidden.Code():
+		return http.StatusForbidden
 	case NotFound.Code():
 		return http.StatusNotFound
-	case NeedToLogin.Code():
-		fallthrough
-	case NotForbidden.Code():
-		return http.StatusForbidden
+	case MethodNotAllowed.Code():
+		return http.StatusMethodNotAllowed
+	case NotAcceptable.Code():
+		return http.StatusNotAcceptable
 	case RequestTimeout.Code():
 		return http.StatusRequestTimeout
-	case UnauthorizedTokenError.Code():
-		fallthrough
-	case UnauthorizedTokenTimeout.Code():
-		return http.StatusUnauthorized
-	case TooManyRequests.Code():
-		return http.StatusTooManyRequests
+	case RequestEntityTooLarge.Code():
+		return http.StatusRequestEntityTooLarge
 	case UnprocessableEntity.Code():
 		return http.StatusUnprocessableEntity
+	case TooManyRequests.Code():
+		return http.StatusTooManyRequests
+	case ServerError.Code():
+		return http.StatusInternalServerError
+	case BadGateway.Code():
+		return http.StatusBadGateway
+	case ServiceUnavailable.Code():
+		return http.StatusServiceUnavailable
+	case GatewayTimeout.Code():
+		return http.StatusGatewayTimeout
 	}
 
 	if statusCode, ok := statusCodeMaps[e.code]; ok {
