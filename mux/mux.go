@@ -7,6 +7,12 @@ import (
 	"sync"
 )
 
+// TODO: 后面考虑是否要做的事情
+// 支持 MethodNotAllowed http.Handler
+// 支持 MethodOptions http.Handler
+// 支持 CORS
+// 提取 Search Query
+
 // muxMode 使用 mux package 的模式，预留着，暂没有复杂功能
 var muxMode string = "debug" // debug ｜ dev ｜prod
 
