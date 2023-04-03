@@ -1,4 +1,4 @@
-package forms
+package form
 
 // 根据字段存储错误信息，一个字段可以有多个错误
 type errMaps map[string][]string
