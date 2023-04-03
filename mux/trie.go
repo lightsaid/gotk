@@ -30,8 +30,8 @@ type Node struct {
 	children    map[string]*Node // 孩子节点
 	pattern     string           // 匹配模式
 	handler     http.Handler     // http handler
-	middlewares []MiddlewareFunc
-	isLeaf      bool // 是否叶子节点
+	middlewares []MiddlewareFunc // 中间件
+	isLeaf      bool             // 是否叶子节点
 }
 
 func (n *Node) addMiddleware(mws ...MiddlewareFunc) {

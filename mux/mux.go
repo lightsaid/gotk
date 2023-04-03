@@ -1,7 +1,6 @@
 package mux
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -17,17 +16,16 @@ var HTTPMethods = []string{
 	http.MethodPut, http.MethodPatch, http.MethodDelete,
 	http.MethodConnect, http.MethodOptions, http.MethodTrace}
 
-// MiddlewareFunc 中间件适配器函数类型
+// MiddlewareFunc 中间件适配器函数签名
 type MiddlewareFunc func(http.Handler) http.Handler
 
 // ServeMux is an HTTP request multiplexer.
 type ServeMux struct {
-	routes        *Trie
-	middlewares   []MiddlewareFunc
-	notFound      http.Handler
-	notAllowed    http.Handler
-	methodOptions http.Handler
-	mutex         sync.RWMutex
+	NotFoundHandler http.Handler
+
+	routes      *Trie
+	middlewares []MiddlewareFunc
+	mutex       sync.RWMutex
 	*routeGroup
 }
 
@@ -51,15 +49,7 @@ func NewServeMux() *ServeMux {
 
 	mux.routeGroup = &routeGroup{ServeMux: mux}
 
-	mux.notFound = http.NotFoundHandler()
-
-	mux.notAllowed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-	})
-
-	mux.methodOptions = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
+	mux.NotFoundHandler = http.NotFoundHandler()
 
 	return mux
 }
@@ -71,9 +61,6 @@ func (s *ServeMux) Use(mws ...MiddlewareFunc) {
 
 // Handle 注册路由总入口函数，所有的路由注册最终实现者
 func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...string) Nodes {
-	if s == nil {
-		fmt.Println("s= ", s == nil)
-	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -104,7 +91,6 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 		}
 		trieNodes = append(trieNodes, newNode)
 	}
-	// fmt.Println("register route success", pattern)
 	// logDebug("register route success", pattern)
 	return trieNodes
 }
@@ -113,7 +99,7 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matchNode, exists := s.routes.Match(r)
 	if !exists {
-		s.wrap(s.notFound, s.middlewares).ServeHTTP(w, r)
+		s.wrap(s.NotFoundHandler, s.middlewares).ServeHTTP(w, r)
 		return
 	}
 
@@ -130,18 +116,6 @@ func (s *ServeMux) wrap(handler http.Handler, mws []MiddlewareFunc) http.Handler
 	}
 
 	return handler
-}
-
-func (s *ServeMux) SetNotFoundHandler(fn http.Handler) {
-	s.notFound = fn
-}
-
-func (s *ServeMux) SetNoAllowedHandler(fn http.Handler) {
-	s.notAllowed = fn
-}
-
-func (s *ServeMux) SetMethodOptionsHandler(fn http.Handler) {
-	s.methodOptions = fn
 }
 
 // SetMuxMode 设置当前 ServeMux 模式，支持 debug ｜ dev ｜prod
