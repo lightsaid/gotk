@@ -27,14 +27,16 @@ func Param(r *http.Request, key string) string {
 
 // Node 用来描述 Trie 结构的结点
 type Node struct {
-	children map[string]*Node // 孩子节点
-	pattern  string           // 匹配模式
-	handler  http.Handler     // http handler
-
-	isLeaf bool // 是否叶子节点
+	children    map[string]*Node // 孩子节点
+	pattern     string           // 匹配模式
+	handler     http.Handler     // http handler
+	middlewares []MiddlewareFunc
+	isLeaf      bool // 是否叶子节点
 }
 
-// func (n *Node)
+func (n *Node) addMiddleware(mws ...MiddlewareFunc) {
+	n.middlewares = append(n.middlewares, mws...)
+}
 
 // Trie 树结构路由
 type Trie struct {
@@ -49,20 +51,14 @@ func NewTrie() *Trie {
 	trie := &Trie{
 		root: &Node{
 			children: make(map[string]*Node),
-			// methodHandlers: make(map[string]http.Handler),
 		},
 		rxMap: make(map[string]*regexp.Regexp),
 	}
-	for _, method := range HTTPMethods {
-		trie.root.children[method] = &Node{
-			children: make(map[string]*Node),
-			// methodHandlers: make(map[string]http.Handler),
-		}
-	}
+
 	return trie
 }
 
-func (t *Trie) Insert(pattern string, handler http.Handler, method string) error {
+func (t *Trie) Insert(pattern string, handler http.Handler, method string) (*Node, error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -90,7 +86,7 @@ func (t *Trie) Insert(pattern string, handler http.Handler, method string) error
 		matchNode, ok := curNode.children[seg]
 		if ok {
 			if matchNode.isLeaf && index == height {
-				return fmt.Errorf("%w: %s %q", ErrConflict, method, pattern)
+				return nil, fmt.Errorf("%w: %s %q", ErrConflict, method, pattern)
 			}
 		} else {
 			exists = false
@@ -108,7 +104,7 @@ func (t *Trie) Insert(pattern string, handler http.Handler, method string) error
 	curNode.isLeaf = true
 	curNode.handler = handler
 
-	return nil
+	return curNode, nil
 }
 
 // Match 查找 segments 路由段是否在树中，匹配成功返回true

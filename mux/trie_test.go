@@ -83,7 +83,7 @@ func TestInsertAndMatch(t *testing.T) {
 
 	var tmpTrie = NewTrie()
 	for _, test := range testCase {
-		err := tmpTrie.Insert(test.pattern, nil, test.method)
+		_, err := tmpTrie.Insert(test.pattern, nil, test.method)
 		if err != nil && err != test.err && !errors.Is(err, ErrConflict) {
 			t.Errorf("%s err want: %s, got: %s", test.pattern, test.err, err)
 		}
@@ -271,4 +271,8 @@ func TestTrieInsertAndMatch(t *testing.T) {
 	那么 * 结点要有足够的信息来做判断，因此在 Node 添加 regexes 字段来存正则，如果是没有正则匹配的动态路由，则设为默认正则 ".+"
 
 	TODO: 路径清理, / "" 的路径
+
+		// NOTE: path="/xx/" 转化为 path=“/xx”
+	// NOTE: path="yyy" 转化为 path="/yyy"
+
 */
