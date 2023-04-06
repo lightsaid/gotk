@@ -1,6 +1,8 @@
 package mux
 
 import (
+	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -8,13 +10,13 @@ import (
 )
 
 // TODO: 后面考虑是否要做的事情
-// 支持 MethodNotAllowed http.Handler
-// 支持 MethodOptions http.Handler
 // 支持 CORS
 // 提取 Search Query
 
 // muxMode 使用 mux package 的模式，预留着，暂没有复杂功能
 var muxMode string = "debug" // debug ｜ dev ｜prod
+
+type contextKey string
 
 // 支持的 HTTP Method
 var HTTPMethods = []string{
@@ -112,8 +114,8 @@ func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !exists {
 		for key := range s.routes.root.children {
 			_, found := s.routes.Match(r, key)
-			if found {
-
+			if found && s.isAllowed {
+				s.wrap(s.MethodNotAllowed, s.middlewares).ServeHTTP(w, r)
 				return
 			}
 		}
@@ -121,6 +123,11 @@ func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.wrap(s.NotFoundHandler, s.middlewares).ServeHTTP(w, r)
 		return
 	}
+
+	// 设置 URL params 参数
+	ctx := s.setParams(r.Context(), matchNode.fullpattern, r.URL.Path)
+
+	r = r.WithContext(ctx)
 
 	mws := []MiddlewareFunc{}
 	mws = append(mws, s.middlewares...)
@@ -138,9 +145,36 @@ func (s *ServeMux) OpenAllowed() {
 	s.isAllowed = true
 }
 
-// GetAllowedStatus 获取 isAllowed 状态
-func (s *ServeMux) GetAllowedStatus() bool {
+// AllowedStatus 获取 isAllowed 状态
+func (s *ServeMux) AllowedStatus() bool {
 	return s.isAllowed
+}
+
+func (s *ServeMux) setParams(ctx context.Context, pattern string, url string) context.Context {
+	// pattern: /api/:fish/fish/:id|^[a-zA-Z]+$/:age|^[0-9]+$
+	// url      /api/feiyu/fish/99/GO/3
+	if url == "/" {
+		return ctx
+	}
+
+	ps := strings.Split(pattern, "/")[1:]
+	us := strings.Split(url, "/")[1:]
+	if len(ps) != len(us) {
+		return ctx
+	}
+	for i, v := range ps {
+		if strings.HasPrefix(v, ":") {
+			paramKey, _, found := strings.Cut(v, "|")
+			if found {
+				paramKey = strings.Split(paramKey, ":")[1]
+			} else {
+				paramKey = strings.Split(v, ":")[1]
+			}
+			ctx = context.WithValue(ctx, contextKey(paramKey), us[i])
+		}
+	}
+
+	return ctx
 }
 
 // wrap 包装，先执行中间件在执行逻辑处理
@@ -150,6 +184,16 @@ func (s *ServeMux) wrap(handler http.Handler, mws []MiddlewareFunc) http.Handler
 	}
 
 	return handler
+}
+
+// Param 获取param
+func Param(r *http.Request, key string) string {
+	val, ok := r.Context().Value(contextKey(key)).(string)
+	// logDebug("Param(%q) is %t value=%q", key, ok, val)
+	if !ok {
+		return ""
+	}
+	return val
 }
 
 // SetMuxMode 设置当前 ServeMux 模式，支持 debug ｜ dev ｜prod
@@ -171,4 +215,12 @@ func logDebug(format string, v ...any) {
 	if muxMode == "debug" {
 		log.Printf(format+"\n", v...)
 	}
+}
+
+func (s *ServeMux) PrintTrieRoutes() {
+	trieBytes, err := json.MarshalIndent(s.routes.root, "", " ")
+	if err != nil {
+		logDebug(err.Error())
+	}
+	logDebug(string(trieBytes))
 }

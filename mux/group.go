@@ -27,6 +27,10 @@ func (r *routeGroup) handle(pattern string, handler func(w http.ResponseWriter, 
 	return nodes
 }
 
+func (r *routeGroup) HandleFunc(pattern string, handler func(w http.ResponseWriter, r *http.Request), methods ...string) Nodes {
+	return r.handle(r.prefix+pattern, http.HandlerFunc(handler), methods...)
+}
+
 func (r *routeGroup) GET(pattern string, handler func(w http.ResponseWriter, r *http.Request)) Nodes {
 	return r.handle(r.prefix+pattern, http.HandlerFunc(handler), http.MethodGet)
 }

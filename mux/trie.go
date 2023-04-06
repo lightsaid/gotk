@@ -1,7 +1,6 @@
 package mux
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,24 +10,13 @@ import (
 	"sync"
 )
 
-type contextKey string
-
 var ErrConflict = errors.New("pattern conflict")
-
-// Param 获取param
-func Param(r *http.Request, key string) string {
-	val, ok := r.Context().Value(contextKey(key)).(string)
-	// logDebug("Param(%q) is %t value=%q", key, ok, val)
-	if !ok {
-		return ""
-	}
-	return val
-}
 
 // Node 用来描述 Trie 结构的结点
 type Node struct {
 	children    map[string]*Node // 孩子节点
 	pattern     string           // 匹配模式
+	fullpattern string
 	handler     http.Handler     // http handler
 	middlewares []MiddlewareFunc // 中间件
 	isLeaf      bool             // 是否叶子节点
@@ -102,6 +90,7 @@ func (t *Trie) Insert(pattern string, handler http.Handler, method string) (*Nod
 	}
 
 	curNode.isLeaf = true
+	curNode.fullpattern = pattern
 	curNode.handler = handler
 
 	return curNode, nil
@@ -147,8 +136,10 @@ func (t *Trie) Match(r *http.Request, notAllowedMethods ...string) (*Node, bool)
 
 				// 匹配成功，设置 parma
 				if segMatch {
-					ctx := context.WithValue(r.Context(), contextKey(paramKey), seg)
-					r = r.WithContext(ctx)
+					// 此处没必要设置，有模糊(:id、/:name ... => :*)参数，设置了也不准,交由ServeMux匹配
+					// ctx := context.WithValue(r.Context(), contextKey(paramKey), seg)
+					// r = r.WithContext(ctx)
+					// logDebug("%s=%s", paramKey, seg)
 					matchNode = curNode.children[key]
 					break
 				}
@@ -188,9 +179,10 @@ func (t *Trie) parse(segment string) (paramKey string, regx string) {
 
 func (n *Node) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(map[string]interface{}{
-		"children": n.children,
-		"isLeaf":   n.isLeaf,
-		"pattern":  n.pattern,
+		"children":    n.children,
+		"isLeaf":      n.isLeaf,
+		"pattern":     n.pattern,
+		"fullpattern": n.fullpattern,
 	}, "", "  ")
 }
 
