@@ -27,11 +27,13 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 // ServeMux is an HTTP request multiplexer.
 type ServeMux struct {
-	NotFoundHandler http.Handler
-
-	routes      *Trie
-	middlewares []MiddlewareFunc
-	mutex       sync.RWMutex
+	NotFoundHandler  http.Handler
+	MethodNotAllowed http.Handler
+	MethodOptions    http.Handler
+	isAllowed        bool // 是否支持 MethodNotAllowed，True开启，开启后，有一定的性能损耗
+	routes           *Trie
+	middlewares      []MiddlewareFunc
+	mutex            sync.RWMutex
 	*routeGroup
 }
 
@@ -57,12 +59,15 @@ func NewServeMux() *ServeMux {
 
 	mux.NotFoundHandler = http.NotFoundHandler()
 
-	return mux
-}
+	mux.MethodNotAllowed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	})
 
-// Use 注册全局使用的中间件
-func (s *ServeMux) Use(mws ...MiddlewareFunc) {
-	s.middlewares = append(s.middlewares, mws...)
+	mux.MethodOptions = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	return mux
 }
 
 // Handle 注册路由总入口函数，所有的路由注册最终实现者
@@ -105,6 +110,14 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matchNode, exists := s.routes.Match(r)
 	if !exists {
+		for key := range s.routes.root.children {
+			_, found := s.routes.Match(r, key)
+			if found {
+
+				return
+			}
+		}
+
 		s.wrap(s.NotFoundHandler, s.middlewares).ServeHTTP(w, r)
 		return
 	}
@@ -113,6 +126,21 @@ func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mws = append(mws, s.middlewares...)
 	mws = append(mws, matchNode.middlewares...)
 	s.wrap(matchNode.handler, mws).ServeHTTP(w, r)
+}
+
+// Use 注册全局使用的中间件
+func (s *ServeMux) Use(mws ...MiddlewareFunc) {
+	s.middlewares = append(s.middlewares, mws...)
+}
+
+// OpenAllowed 开启支持 MethodNotAllowed
+func (s *ServeMux) OpenAllowed() {
+	s.isAllowed = true
+}
+
+// GetAllowedStatus 获取 isAllowed 状态
+func (s *ServeMux) GetAllowedStatus() bool {
+	return s.isAllowed
 }
 
 // wrap 包装，先执行中间件在执行逻辑处理

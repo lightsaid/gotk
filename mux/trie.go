@@ -108,9 +108,13 @@ func (t *Trie) Insert(pattern string, handler http.Handler, method string) (*Nod
 }
 
 // Match 查找 segments 路由段是否在树中，匹配成功返回true
-func (t *Trie) Match(r *http.Request) (*Node, bool) {
+func (t *Trie) Match(r *http.Request, notAllowedMethods ...string) (*Node, bool) {
 	path := r.URL.Path
-	var segments = []string{r.Method}
+	method := r.Method
+	if len(notAllowedMethods) > 0 {
+		method = notAllowedMethods[0]
+	}
+	var segments = []string{method}
 	if path == "/" {
 		segments = append(segments, "/")
 	} else {
