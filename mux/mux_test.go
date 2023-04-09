@@ -52,6 +52,7 @@ func mySinceMiddleware(handler http.Handler) http.Handler {
 
 // 注册测试所需的路由
 func registerRoutes() {
+	testMux = mux.NewServeMux()
 	// Version Handler
 	testMux.Handle("/api/version", http.HandlerFunc(getVersion), http.MethodGet, http.MethodPost)
 	testMux.HandleFunc("/api/v2/version", getVersion, http.MethodGet, http.MethodPost)

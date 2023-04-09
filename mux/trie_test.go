@@ -11,11 +11,11 @@ import (
 
 func TestNewTrie(t *testing.T) {
 	tire := NewTrie()
-	trieBytes, err := json.MarshalIndent(tire, "", " ")
+	_, err := json.MarshalIndent(tire, "", " ")
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(trieBytes))
+	// fmt.Println(string(trieBytes))
 }
 
 func TestParse(t *testing.T) {
@@ -88,8 +88,8 @@ func TestInsertAndMatch(t *testing.T) {
 			t.Errorf("%s err want: %s, got: %s", test.pattern, test.err, err)
 		}
 	}
-	// buf, _ := json.MarshalIndent(tmpTrie, "", " ")
-	// fmt.Println(string(buf))
+	buf, _ := json.MarshalIndent(tmpTrie, "", " ")
+	fmt.Println(string(buf))
 
 	var apis = []struct {
 		path   string
@@ -173,6 +173,14 @@ func TestInsertAndMatch(t *testing.T) {
 	}
 }
 
+func BenchmarkXxx(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		TestInsertAndMatch(&testing.T{})
+	}
+
+	//  3410           1804984 ns/op
+}
+
 /*
 	如何处理路冲突和优先匹配问题？有可能出现如下情况:
 	0和1冲突,不允许注册; 2和3不冲突,2优先匹配; 2~5都不冲突,2优先匹配,3~5随机优先匹配，寻找第一个符合条件的
@@ -184,6 +192,19 @@ func TestInsertAndMatch(t *testing.T) {
 	4. /api/:title/:pid|^[0-9]$
 	5. /api/:title/:kid|^[A-C]$
 	6. /api/:title/:kid|^[A-C]$/hello
+
+
+	GET /v1/tag/:id|^[0-9]+$
+	GET /v1/tag/:name
+	GET /v1/category/:name/admin
+
+	POST /v1/tag
+	POST /v1/tag/:id|^[0-9]+$
+	POST /v2/tag
+
+
+
+
 
 	那么问题来了？假设有个接口: /api/cat/10，在寻找 /api/cat 这部分时，2～6 都有可能命中，按理说这个应该匹配到第3、4个，
 	但是如果在匹配cat过程中优先命中2、5、6之一，则结果就是404了
