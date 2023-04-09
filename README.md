@@ -1,7 +1,6 @@
 # gotk (go toolkit)
 
-这是一个 Go 工具包，其中包括 HTTP 多路复用器 mux；errs 基于 REST API 开发公共错误码处理；form 是一套 Form 表单验证器；
-wsocks 是一个 WebSocket 轻量级库（目前还在构思中）。 
+这是一个 Go 工具包，其中包括 HTTP 多路复用器 mux；errs 基于 REST API 开发公共错误码处理；form 是一套 Form 表单验证器。 
 
 mux | [errs](./errs.md) 
 
