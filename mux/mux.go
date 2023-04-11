@@ -12,6 +12,7 @@ import (
 // TODO: 后面考虑是否要做的事情
 // 支持 CORS
 // 提取 Search Query
+// 静态文件访问
 
 // muxMode 使用 mux package 的模式，预留着，暂没有复杂功能
 var muxMode string = "debug" // debug ｜ dev ｜prod
@@ -157,12 +158,17 @@ func (s *ServeMux) setParams(ctx context.Context, pattern string, url string) co
 		return ctx
 	}
 
-	ps := strings.Split(pattern, "/")[1:]
-	us := strings.Split(url, "/")[1:]
-	if len(ps) != len(us) {
+	// 判断是否是静态服务资源
+	if strings.HasSuffix(pattern, "/:filepath") {
+		ctx = context.WithValue(ctx, contextKey("filepath"), url)
+	}
+
+	pattents := strings.Split(pattern, "/")[1:]
+	urls := strings.Split(url, "/")[1:]
+	if len(pattents) != len(urls) {
 		return ctx
 	}
-	for i, v := range ps {
+	for i, v := range pattents {
 		if strings.HasPrefix(v, ":") {
 			paramKey, _, found := strings.Cut(v, "|")
 			if found {
@@ -170,7 +176,7 @@ func (s *ServeMux) setParams(ctx context.Context, pattern string, url string) co
 			} else {
 				paramKey = strings.Split(v, ":")[1]
 			}
-			ctx = context.WithValue(ctx, contextKey(paramKey), us[i])
+			ctx = context.WithValue(ctx, contextKey(paramKey), urls[i])
 		}
 	}
 

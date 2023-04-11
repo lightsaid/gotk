@@ -68,7 +68,8 @@ func (t *Trie) Insert(pattern string, handler http.Handler, method string) (*Nod
 		if paramKey != "" && rx != "" {
 			t.rxMap[rx] = regexp.MustCompile(rx)
 		}
-		if paramKey != "" && rx == "" {
+		// NOTE: filepath 是静态资源服务的参数，因此它没有正则表达式
+		if paramKey != "" && rx == "" && paramKey != "filepath" {
 			seg = ":*"
 		}
 		matchNode, ok := curNode.children[seg]
@@ -123,6 +124,11 @@ func (t *Trie) Match(r *http.Request, notAllowedMethods ...string) (*Node, bool)
 				// 存在动态 parma，但不存在 正则匹配
 				if len(paramKey) > 0 && len(regx) == 0 {
 					segMatch = true
+					// NOTE: 判断是否静态资源
+					if paramKey == "filepath" && childNode.isLeaf {
+						curNode = childNode
+						goto FilePath
+					}
 				}
 
 				//  存在动态正则 parma
@@ -153,6 +159,7 @@ func (t *Trie) Match(r *http.Request, notAllowedMethods ...string) (*Node, bool)
 		curNode = matchNode
 	}
 
+FilePath:
 	return curNode, curNode.isLeaf
 }
 

@@ -35,6 +35,14 @@ func main() {
 	// 支持多 method, 如果不指定 Method, 默认支持所有
 	group.HandleFunc("/profile", handlerEcho, http.MethodGet, http.MethodPost)
 
+	// 静态资源
+	// fs := http.FileServer(http.Dir("./static"))
+	// http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	router.Static("/static/", "./static")
+
+	// router.PrintTrieRoutes()
+
 	http.ListenAndServe(":8888", router)
 }
 
