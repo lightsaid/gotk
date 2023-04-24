@@ -57,6 +57,9 @@ func main() {
 	// 支持多 method, 如果不指定 Method, 默认支持所有
 	group.HandleFunc("/profile", handlerEcho, http.MethodGet, http.MethodPost)
 
+	// 静态资源访问
+	router.Static("/static/", "./static")
+
 	http.ListenAndServe(":8888", router)
 }
 

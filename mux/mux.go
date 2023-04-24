@@ -12,7 +12,7 @@ import (
 // TODO: 后面考虑是否要做的事情
 // 支持 CORS
 // 提取 Search Query
-// 静态文件访问
+// 中间件，忽略路径
 
 // muxMode 使用 mux package 的模式，预留着，暂没有复杂功能
 var muxMode string = "debug" // debug ｜ dev ｜prod
