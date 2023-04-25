@@ -19,20 +19,24 @@ type Connection struct {
 	IsClosed bool
 
 	// 处理该链接handler
-	handleFunc iface.HandleConnFunc
+	// handleFunc iface.HandleConnFunc  交由 Router 处理业务
+
+	// 该连接的处理方法router
+	Router iface.IRouter
 
 	// 告知该链接已经退出/停止channel
 	Exit chan struct{}
 }
 
 // NewConnection 创建一个链接对象
-func NewConnection(conn *net.TCPConn, connID uint32, handle iface.HandleConnFunc) iface.IConnection {
+func NewConnection(conn *net.TCPConn, connID uint32, router iface.IRouter) iface.IConnection {
 	return &Connection{
-		Conn:       conn,
-		ConnID:     connID,
-		handleFunc: handle,
-		IsClosed:   false,
-		Exit:       make(chan struct{}),
+		Conn:   conn,
+		ConnID: connID,
+		// handleFunc: handle,
+		Router:   router,
+		IsClosed: false,
+		Exit:     make(chan struct{}),
 	}
 }
 
@@ -91,18 +95,30 @@ func (c *Connection) StartReader() {
 
 	for {
 		var buf = make([]byte, 512)
-		n, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		if err != nil {
 			c.Exit <- struct{}{}
 			continue
 		}
 
-		// 调用当前链接绑定处理函数
-		if err := c.handleFunc(c.Conn, buf, n); err != nil {
-			fmt.Printf("[%d] handle error %v\n", c.ConnID, err)
-			c.Exit <- struct{}{}
-			return
+		// // 调用当前链接绑定处理函数
+		// if err := c.handleFunc(c.Conn, buf, n); err != nil {
+		// 	fmt.Printf("[%d] handle error %v\n", c.ConnID, err)
+		// 	c.Exit <- struct{}{}
+		// 	return
+		// }
+
+		req := Request{
+			conn: c,
+			data: buf,
 		}
+
+		go func(req iface.IRequest) {
+			// 执行注册路由方法
+			c.Router.PreHandle(req)
+			c.Router.Handle(req)
+			c.Router.PostHandle(req)
+		}(&req)
 	}
 }
 

@@ -18,6 +18,9 @@ type Server struct {
 	Host string
 	// 服务端口
 	Port int
+
+	// 当前Server由用户绑定的回调router,也就是Server注册的链接对应的业务处理
+	Router iface.IRouter
 }
 
 func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
@@ -36,6 +39,7 @@ func NewServer(name string) iface.IServer {
 		IPVersion: "tcp4",
 		Host:      "0.0.0.0",
 		Port:      9000,
+		Router:    nil,
 	}
 
 	return srv
@@ -64,7 +68,7 @@ func (s *Server) Start() {
 				continue
 			}
 
-			connection := NewConnection(conn, cid, CallBackToClient)
+			connection := NewConnection(conn, cid, s.Router)
 			cid++
 
 			go connection.Start()
@@ -100,4 +104,11 @@ func (s *Server) Serve() {
 	fmt.Println("键入任意字符停止....")
 	var input string
 	fmt.Scanln(&input)
+}
+
+// AddRouter 路由功能：给当前服务注册一个路由业务方法，供客户端链接处理使用
+func (s *Server) AddRouter(router iface.IRouter) {
+	s.Router = router
+
+	fmt.Println("Add Router succ! ")
 }
