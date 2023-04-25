@@ -1,6 +1,7 @@
 package wsocks
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -19,6 +20,16 @@ type Server struct {
 	Port int
 }
 
+func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+	//回显业务
+	fmt.Println("[Conn Handle] CallBackToClient ... ")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write back buf err ", err)
+		return errors.New("CallBackToClient error")
+	}
+	return nil
+}
+
 func NewServer(name string) iface.IServer {
 	srv := &Server{
 		Name:      name,
@@ -32,6 +43,7 @@ func NewServer(name string) iface.IServer {
 
 func (s *Server) Start() {
 	log.Printf("Start %s websocket server...", s.Name)
+
 	go func() {
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.Host, s.Port))
 		if err != nil {
@@ -43,6 +55,8 @@ func (s *Server) Start() {
 			log.Fatal(err)
 		}
 
+		var cid uint32 = 1
+
 		for {
 			conn, err := lis.AcceptTCP()
 			if err != nil {
@@ -50,23 +64,28 @@ func (s *Server) Start() {
 				continue
 			}
 
-			go func() {
-				// 不断从循环从客户端读取数据
-				for {
-					// 暂定 512 字节
-					buf := make([]byte, 512)
-					n, err := conn.Read(buf)
-					if err != nil {
-						log.Println("read data error ", err)
-						continue
-					}
-					// 读取多少字节，就回响多少字节
-					if _, err := conn.Write(buf[:n]); err != nil {
-						log.Println("write data error ", err)
-						continue
-					}
-				}
-			}()
+			connection := NewConnection(conn, cid, CallBackToClient)
+			cid++
+
+			go connection.Start()
+
+			// go func() {
+			// 	// 不断从循环从客户端读取数据
+			// 	for {
+			// 		// 暂定 512 字节
+			// 		buf := make([]byte, 512)
+			// 		n, err := conn.Read(buf)
+			// 		if err != nil {
+			// 			log.Println("read data error ", err)
+			// 			continue
+			// 		}
+			// 		// 读取多少字节，就回响多少字节
+			// 		if _, err := conn.Write(buf[:n]); err != nil {
+			// 			log.Println("write data error ", err)
+			// 			continue
+			// 		}
+			// 	}
+			// }()
 		}
 
 	}()
