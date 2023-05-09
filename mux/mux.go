@@ -113,17 +113,18 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matchNode, exists := s.routes.Match(r)
 	if !exists {
+
+		if r.Method == http.MethodOptions {
+			s.wrap(s.MethodOptions, s.middlewares).ServeHTTP(w, r)
+			return
+		}
+
 		for key := range s.routes.root.children {
 			_, found := s.routes.Match(r, key)
 			if found && s.isAllowed {
 				s.wrap(s.MethodNotAllowed, s.middlewares).ServeHTTP(w, r)
 				return
 			}
-		}
-
-		if r.Method == http.MethodOptions {
-			s.wrap(s.MethodOptions, s.middlewares).ServeHTTP(w, r)
-			return
 		}
 
 		s.wrap(s.NotFoundHandler, s.middlewares).ServeHTTP(w, r)
