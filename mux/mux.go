@@ -113,7 +113,7 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matchNode, exists := s.routes.Match(r)
 	if !exists {
-
+		w.Header().Set("Allow", strings.Join(append(HTTPMethods, http.MethodOptions), ", "))
 		if r.Method == http.MethodOptions {
 			s.wrap(s.MethodOptions, s.middlewares).ServeHTTP(w, r)
 			return
