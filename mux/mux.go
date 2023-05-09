@@ -121,6 +121,11 @@ func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		if r.Method == http.MethodOptions {
+			s.wrap(s.MethodOptions, s.middlewares).ServeHTTP(w, r)
+			return
+		}
+
 		s.wrap(s.NotFoundHandler, s.middlewares).ServeHTTP(w, r)
 		return
 	}
