@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/lightsaid/gotk/wsocks/iface"
+	"github.com/lightsaid/gotk/wsocks/utils"
 )
 
 type Server struct {
@@ -34,11 +35,14 @@ func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 }
 
 func NewServer(name string) iface.IServer {
+	// 加载配置文件
+	utils.EnvConfig.Reload()
+
 	srv := &Server{
-		Name:      name,
+		Name:      utils.EnvConfig.Name,
 		IPVersion: "tcp4",
-		Host:      "0.0.0.0",
-		Port:      9000,
+		Host:      utils.EnvConfig.Host,
+		Port:      utils.EnvConfig.TCPPort,
 		Router:    nil,
 	}
 

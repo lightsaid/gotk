@@ -9,6 +9,7 @@ import (
 
 	"github.com/lightsaid/gotk/wsocks"
 	"github.com/lightsaid/gotk/wsocks/iface"
+	"github.com/lightsaid/gotk/wsocks/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,7 +55,8 @@ func TestClient(t *testing.T) {
 }
 
 func client(t *testing.T) {
-	conn, err := net.Dial("tcp", "localhost:9000")
+	utils.EnvConfig.Reload()
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", utils.EnvConfig.Host, utils.EnvConfig.TCPPort))
 	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {

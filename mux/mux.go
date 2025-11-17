@@ -98,6 +98,9 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 	}
 
 	var trieNodes Nodes
+	if len(HTTPMethods) == 0 {
+		methods = HTTPMethods
+	}
 	for _, method := range methods {
 		newNode, err := s.routes.Insert(pattern, handler, strings.ToUpper(method))
 		if err != nil {
@@ -113,17 +116,20 @@ func (s *ServeMux) Handle(pattern string, handler http.Handler, methods ...strin
 func (s *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	matchNode, exists := s.routes.Match(r)
 	if !exists {
-		w.Header().Set("Allow", strings.Join(append(HTTPMethods, http.MethodOptions), ", "))
 		if r.Method == http.MethodOptions {
+			// NOTE: ...
+			// w.Header().Set("Allow", http.MethodOptions)
 			s.wrap(s.MethodOptions, s.middlewares).ServeHTTP(w, r)
 			return
 		}
 
-		for key := range s.routes.root.children {
-			_, found := s.routes.Match(r, key)
-			if found && s.isAllowed {
-				s.wrap(s.MethodNotAllowed, s.middlewares).ServeHTTP(w, r)
-				return
+		if s.isAllowed {
+			for key := range s.routes.root.children {
+				_, found := s.routes.Match(r, key)
+				if found && s.isAllowed {
+					s.wrap(s.MethodNotAllowed, s.middlewares).ServeHTTP(w, r)
+					return
+				}
 			}
 		}
 
