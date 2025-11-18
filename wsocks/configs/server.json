@@ -1,7 +1,0 @@
-{
-    "name": "wsocks server",
-    "host": "0.0.0.0",
-    "tcp_port": 9999,
-    "max_conns": 3,
-    "max_packet_size": 1024
-}
