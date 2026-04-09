@@ -14,8 +14,8 @@ var (
 	RequestIDCtxKey CtxKey = "gotk_request_id"
 )
 
-// SetApiVersion 设置版本信息到上下文
-func SetVersionCtx(next http.Handler, version string) http.Handler {
+// WithVersionCtx 设置版本信息到上下文
+func WithVersionCtx(next http.Handler, version string) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), VersionCtxKey, version)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -23,8 +23,8 @@ func SetVersionCtx(next http.Handler, version string) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-// SetRequestIDCtx 设置request id
-func SetRequestIDCtx(next http.Handler) http.Handler {
+// WithRequestIDCtx 设置request id
+func WithRequestIDCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestId := uuid.NewString()
 		ctx := context.WithValue(r.Context(), RequestIDCtxKey, requestId)

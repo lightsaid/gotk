@@ -29,7 +29,7 @@ var (
 func NewApiError(statusCode int, bizCode, msg string) *ApiError {
 
 	intCode, _ := strconv.Atoi(bizCode)
-	if intCode >= minCode && intCode <= -100 {
+	if intCode >= minCode && intCode <= maxCode {
 		panic(fmt.Sprintf("%s is the reserved code", bizCode))
 	}
 

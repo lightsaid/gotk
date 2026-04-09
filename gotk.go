@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -32,17 +33,31 @@ func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	// 使用请求体创建一个解码器
 	dec := json.NewDecoder(r.Body)
 
+	// dec.DisallowUnknownFields() // 不允许存非定义的字段，这里注释掉表示允许
+
 	err := dec.Decode(dst)
 	if err != nil {
 		var syntaxError *json.SyntaxError
+		var typeError *json.UnmarshalTypeError
+		var invalidError *json.InvalidUnmarshalError
 		switch {
 		case errors.As(err, &syntaxError):
-			return errors.New("请输入JSON格式请求体")
+			return errors.New("请输入JSON格式参数")
+		case errors.As(err, &typeError):
+			return errors.New("参数字段类型不匹配")
+		case errors.As(err, &invalidError):
+			// 通常是dst传递的不是指针
+			return errors.New("无法解码到目标参数")
+		// case strings.Contains(err.Error(), "non-pointer"):
+		// 	// 通常是dst传递的不是指针
+		// 	return errors.New("无法解码到目标参数")
 		case errors.Is(err, io.EOF):
-			return errors.New("请求体不能为空")
+			return errors.New("参数不能为空")
 		case strings.Contains(err.Error(), "http: request body too large"):
-			return fmt.Errorf("请求体大小不能超过 %d MB", baseMBSize)
+			return fmt.Errorf("参数大小不能超过 %d MB", baseMBSize)
+
 		default:
+			slog.Error("dec.Decode fail", "error", err)
 			return errors.New("未知错误，请检查参数")
 		}
 	}
@@ -78,12 +93,17 @@ func WriteJSON(w http.ResponseWriter, r *http.Request, a *ApiError, data any, he
 	}
 
 	if len(headers) > 0 {
-		for key, value := range headers[0] {
-			w.Header()[key] = value
+		for _, header := range headers {
+			for key, values := range header {
+				for _, v := range values {
+					w.Header().Add(key, v)
+				}
+			}
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 	w.WriteHeader(a.StatusCode())
 	_, err = w.Write(out)
 	if err != nil {

@@ -10,10 +10,10 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-type logType int
+type LogType int
 
 const (
-	JsonType logType = iota + 1
+	JsonType LogType = iota + 1
 	TextType
 )
 
@@ -53,7 +53,7 @@ func (lh *LogHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 // NewLogger 创建一个slog日志实例 level=(DEBUG,INFO,WARN,ERROR); output 日志输出位置
-func NewLogger(output io.Writer, opts *slog.HandlerOptions, logType logType) *slog.Logger {
+func NewLogger(output io.Writer, opts *slog.HandlerOptions, logType LogType) *slog.Logger {
 	if output == nil {
 		output = os.Stderr
 	}

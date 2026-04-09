@@ -3,6 +3,7 @@ package gotk
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // Validator 验证器，Error 保存字段和对应的错误信息
@@ -20,6 +21,27 @@ func New() *Validator {
 // Valid 验证是否通过
 func (v *Validator) Valid() bool {
 	return len(v.Errors) == 0
+}
+
+// String 返回所有错误，多个以";"分割
+func (v *Validator) String() string {
+	errs := make([]string, 0, len(v.Errors))
+	for _, v := range v.Errors {
+		if v != "" {
+			errs = append(errs, v)
+		}
+	}
+	return strings.Join(errs, ";")
+}
+
+// GetOne 获取一个错误，没有返回空
+func (v *Validator) GetOne() string {
+	for _, v := range v.Errors {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // AddError 添加一个错误信息
@@ -55,6 +77,15 @@ func (v *Validator) Check(expr bool, field, message string) {
 	if !expr {
 		v.AddError(field, message)
 	}
+}
+
+func OneOf[T comparable](val T, options ...T) bool {
+	for _, opt := range options {
+		if val == opt {
+			return true
+		}
+	}
+	return false
 }
 
 // Matches value 是否满足rx正则

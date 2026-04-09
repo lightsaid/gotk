@@ -43,7 +43,7 @@ func Bytes(n int) ([]byte, error) {
 	return bs, nil
 }
 
-// SafeString 随机生产安全的字符串,n是字节数，少于minBytesPerString则设为minBytesPerString
+// SafeString 随机生产安全的字符串,n是字节数，少于32则设为32
 func SafeString(n int) (string, error) {
 	if n < minBytesPerString {
 		n = minBytesPerString
